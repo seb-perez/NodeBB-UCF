@@ -1,4 +1,3 @@
-'use strict';
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -8,17 +7,23 @@ import * as winston from 'winston';
 import * as file from '../file';
 import { Translator } from '../translator';
 
+interface FallbackParams {
+    namespace: string;
+    translations: string;
+    title?: string;
+}
+
 function filterDirectories(directories: string[]): string[] {
     return directories.map(
         // get the relative path
         // convert dir to use forward slashes
-        dir => dir.replace(/^.*(admin.*?).tpl$/, '$1').split(path.sep).join('/')
+        (dir: string) => dir.replace(/^.*(admin.*?).tpl$/, '$1').split(path.sep).join('/')
     ).filter(
         // exclude .js files
         // exclude partials
         // only include subpaths
         // exclude category.tpl, group.tpl, category-analytics.tpl
-        dir => (
+        (dir: string) => (
             !dir.endsWith('.js') &&
             !dir.includes('/partials/') &&
             /\/.*\//.test(dir) &&
@@ -28,17 +33,37 @@ function filterDirectories(directories: string[]): string[] {
 }
 
 async function getAdminNamespaces(): Promise<string[]> {
-    const directories = await file.walk(path.resolve(nconf.get('views_dir'), 'admin'));
-    return filterDirectories(directories);
+    try {
+        const viewsDir: string = nconf.get('views_dir') as string;
+        if (typeof viewsDir !== 'string') {
+            throw new Error('Views directory path is not a string');
+        }
+
+        const directories: string[] = await file.walk(path.resolve(viewsDir, 'admin')) as string[];
+        return filterDirectories(directories);
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error('Error fetching admin namespaces:', error.message);
+        } else {
+            console.error('An unknown error occurred while fetching admin namespaces.');
+        }
+        return [];
+    }
 }
 
 function sanitize(html: string): string {
     // reduce the template to just meaningful text
     // remove all tags and strip out scripts, etc completely
-    return sanitizeHTML(html, {
+    const sanitizedHTML = sanitizeHTML(html, {
         allowedTags: [],
         allowedAttributes: [],
-    });
+    }) as string;
+
+    if (typeof sanitizedHTML !== 'string') {
+        throw new Error('Sanitized HTML is not a string.');
+    }
+
+    return sanitizedHTML;
 }
 
 function simplify(translations: string): string {
@@ -55,28 +80,40 @@ function nsToTitle(namespace: string): string {
         .replace(/[^a-zA-Z> ]/g, ' ');
 }
 
-interface FallbackParams {
-    namespace: string;
-    translations: string;
-    title?: string;
-}
-
 const fallbackCache: { [key: string]: FallbackParams } = {};
 
 async function initFallback(namespace: string): Promise<FallbackParams> {
-    const template = await fs.promises.readFile(path.resolve(nconf.get('views_dir'), `${namespace}.tpl`), 'utf8');
+    try {
+        const viewsDir: string = nconf.get('views_dir') as string;
+        if (typeof viewsDir !== 'string') {
+            throw new Error('Views directory path is not a string');
+        }
 
-    const title = nsToTitle(namespace);
-    let translations = sanitize(template);
-    translations = Translator.removePatterns(translations);
-    translations = simplify(translations);
-    translations += `\n${title}`;
+        const templatePath: string = path.resolve(viewsDir, `${namespace}.tpl`);
+        const template: string = await fs.promises.readFile(templatePath, 'utf8');
 
-    return {
-        namespace: namespace,
-        translations: translations,
-        title: title,
-    };
+        const title: string = nsToTitle(namespace);
+        let translations: string = sanitize(template);
+        translations = Translator.removePatterns(translations);
+        translations = simplify(translations);
+        translations += `\n${title}`;
+
+        return {
+            namespace: namespace,
+            translations: translations,
+            title: title,
+        };
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error(`Error initializing fallback for namespace ${namespace}:`, error.message);
+        } else {
+            console.error(`An unknown error occurred while initializing fallback for namespace ${namespace}.`);
+        }
+        return {
+            namespace: namespace,
+            translations: '',
+        };
+    }
 }
 
 async function fallback(namespace: string): Promise<FallbackParams> {
@@ -89,15 +126,10 @@ async function fallback(namespace: string): Promise<FallbackParams> {
     return params;
 }
 
-async function initDict(language: string): Promise<FallbackParams[]> {
-    const namespaces = await getAdminNamespaces();
-    return await Promise.all(namespaces.map(ns => buildNamespace(language, ns)));
-}
-
 async function buildNamespace(language: string, namespace: string): Promise<FallbackParams> {
     const translator = Translator.create(language);
     try {
-        const translations = await translator.getTranslation(namespace);
+        const translations: { [key: string]: string } = await translator.getTranslation(namespace);
         if (!translations || !Object.keys(translations).length) {
             return await fallback(namespace);
         }
@@ -119,12 +151,21 @@ async function buildNamespace(language: string, namespace: string): Promise<Fall
             title: title,
         };
     } catch (err) {
-        winston.error(err.stack);
+        if (err instanceof Error && err.stack) { // Check if err is an Error instance and has a stack property
+            winston.error(err.stack);
+        } else {
+            winston.error(err);
+        }
         return {
             namespace: namespace,
             translations: '',
         };
     }
+}
+
+async function initDict(language: string): Promise<FallbackParams[]> {
+    const namespaces = await getAdminNamespaces();
+    return await Promise.all(namespaces.map(ns => buildNamespace(language, ns)));
 }
 
 const cache: { [key: string]: FallbackParams[] } = {};
@@ -143,5 +184,5 @@ export {
     getDictionary,
     filterDirectories,
     simplify,
-    sanitize
+    sanitize,
 };
