@@ -133,7 +133,7 @@ async function buildNamespace(language: string, namespace: string): Promise<Fall
     if (!namespace) {
         throw new Error('Namespace is undefined or null');
     }
-    
+
     const translator = Translator.create(language);
     try {
         const translations: { [key: string]: string } = await translator.getTranslation(namespace);
@@ -146,10 +146,7 @@ async function buildNamespace(language: string, namespace: string): Promise<Fall
 
         let title = namespace;
         const matchResult = title.match(/admin\/(.+?)\/(.+?)$/);
-        title = matchResult ? `[[admin/menu:section-${
-            matchResult[1] === 'development' ? 'advanced' : matchResult[1]
-        }]]${matchResult[2] ? (` > [[admin/menu:${
-            matchResult[1]}/${matchResult[2]}]]`) : ''}` : '';
+        title = matchResult ? `[[admin/menu:section-${matchResult[1] === 'development' ? 'advanced' : matchResult[1]}]]${matchResult[2] ? (` > [[admin/menu:${matchResult[1]}/${matchResult[2]}]]`) : ''}` : '';
 
         title = await translator.translate(title);
         return {
