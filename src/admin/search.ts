@@ -1,7 +1,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import * as sanitizeHTML from 'sanitize-html';
+import sanitizeHTML from 'sanitize-html';
 import * as nconf from 'nconf';
 import * as winston from 'winston';
 import * as file from '../file';
@@ -130,6 +130,10 @@ async function fallback(namespace: string): Promise<FallbackParams> {
 }
 
 async function buildNamespace(language: string, namespace: string): Promise<FallbackParams> {
+    if (!namespace) {
+        throw new Error('Namespace is undefined or null');
+    }
+    
     const translator = Translator.create(language);
     try {
         const translations: { [key: string]: string } = await translator.getTranslation(namespace);

@@ -31,11 +31,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sanitize = exports.simplify = exports.filterDirectories = exports.getDictionary = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-const sanitizeHTML = __importStar(require("sanitize-html"));
+const sanitize_html_1 = __importDefault(require("sanitize-html"));
 const nconf = __importStar(require("nconf"));
 const winston = __importStar(require("winston"));
 const file = __importStar(require("../file"));
@@ -81,7 +84,7 @@ function sanitize(html) {
     // remove all tags and strip out scripts, etc completely
     // The next line calls a function in a module that has not been updated to TS yet
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    const sanitizedHTML = sanitizeHTML(html, {
+    const sanitizedHTML = (0, sanitize_html_1.default)(html, {
         allowedTags: [],
         allowedAttributes: [],
     });
@@ -151,6 +154,9 @@ function fallback(namespace) {
 }
 function buildNamespace(language, namespace) {
     return __awaiter(this, void 0, void 0, function* () {
+        if (!namespace) {
+            throw new Error('Namespace is undefined or null');
+        }
         const translator = translator_1.Translator.create(language);
         try {
             const translations = yield translator.getTranslation(namespace);
