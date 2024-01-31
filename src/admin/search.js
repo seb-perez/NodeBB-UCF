@@ -40,6 +40,7 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const sanitize_html_1 = __importDefault(require("sanitize-html"));
 const nconf = __importStar(require("nconf"));
+const winston = __importStar(require("winston"));
 const file = __importStar(require("../file"));
 const translator_1 = require("../translator");
 function filterDirectories(directories) {
@@ -156,8 +157,7 @@ function buildNamespace(language, namespace) {
         const translator = translator_1.Translator.create(language);
         try {
             const translations = yield translator.getTranslation(namespace);
-            if (!translations || Object.keys(translations).length === 0) {
-                // Handle the case when translations are falsy or empty
+            if (!translations || !Object.keys(translations).length) {
                 return yield fallback(namespace);
             }
             // join all translations into one string separated by newlines
@@ -174,8 +174,12 @@ function buildNamespace(language, namespace) {
             };
         }
         catch (err) {
-            // Error handling code
-            console.error(`Error building namespace ${namespace}:`, err);
+            if (err instanceof Error && err.stack) { // Check if err is an Error instance and has a stack property
+                winston.error(err.stack);
+            }
+            else {
+                winston.error(err);
+            }
             return {
                 namespace: namespace,
                 translations: '',
