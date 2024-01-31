@@ -54,6 +54,9 @@ async function getAdminNamespaces(): Promise<string[]> {
 function sanitize(html: string): string {
     // reduce the template to just meaningful text
     // remove all tags and strip out scripts, etc completely
+
+    // The next line calls a function in a module that has not been updated to TS yet
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
     const sanitizedHTML = sanitizeHTML(html, {
         allowedTags: [],
         allowedAttributes: [],
