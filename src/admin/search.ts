@@ -97,33 +97,37 @@ async function fallback(namespace: string): Promise<NamespaceInfo> {
 }
 
 async function buildNamespace(language: string, namespace: string): Promise<NamespaceInfo> {
+    if (!namespace) {
+        throw new Error('Namespace is undefined or null');
+    }
     const translator = Translator.create(language);
     try {
-        const translations = await translator.getTranslation(namespace);
+        const translations: { [key: string]: string } = await translator.getTranslation(namespace);
         if (!translations || !Object.keys(translations).length) {
             return await fallback(namespace);
         }
-
+        // join all translations into one string separated by newlines
         let str = Object.keys(translations).map(key => translations[key]).join('\n');
         str = sanitize(str);
 
-        let title = namespace as any;
-        title = title.match(/admin\/(.+?)\/(.+?)$/);
-        title = `[[admin/menu:section-${
-            title[1] === 'development' ? 'advanced' : title[1]
-        }]]${title[2] ? (` > [[admin/menu:${
-            title[1]}/${title[2]}]]`) : ''}`;
+        let title = namespace;
+        const matchResult = title.match(/admin\/(.+?)\/(.+?)$/);
+        title = matchResult ? `[[admin/menu:section-${matchResult[1] === 'development' ? 'advanced' : matchResult[1]}]]${matchResult[2] ? (` > [[admin/menu:${matchResult[1]}/${matchResult[2]}]]`) : ''}` : '';
 
         title = await translator.translate(title);
         return {
-            namespace,
+            namespace: namespace,
             translations: `${str}\n${title}`,
-            title,
+            title: title,
         };
     } catch (err) {
-        winston.error(err.stack);
+        if (err instanceof Error && err.stack) { // Check if err is an Error instance and has a stack property
+            winston.error(err.stack);
+        } else {
+            winston.error(err);
+        }
         return {
-            namespace,
+            namespace: namespace,
             translations: '',
         };
     }
