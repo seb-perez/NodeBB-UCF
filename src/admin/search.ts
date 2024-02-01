@@ -60,7 +60,6 @@ const fallbackCache: FallbackCache = {};
 
 async function initFallback(namespace: string): Promise<NamespaceInfo> {
     const template = await fs.readFile(path.resolve(nconf.get('views_dir'), `${namespace}.tpl`), 'utf8');
-
     const title = nsToTitle(namespace);
     let translations = sanitize(template);
     translations = Translator.removePatterns(translations);
@@ -82,11 +81,6 @@ async function fallback(namespace: string): Promise<NamespaceInfo> {
     const params = await initFallback(namespace);
     fallbackCache[namespace] = params;
     return params;
-}
-
-async function initDict(language: string): Promise<NamespaceInfo[]> {
-    const namespaces = await getAdminNamespaces();
-    return await Promise.all(namespaces.map(ns => buildNamespace(language, ns)));
 }
 
 async function buildNamespace(language: string, namespace: string): Promise<NamespaceInfo> {
@@ -120,6 +114,11 @@ async function buildNamespace(language: string, namespace: string): Promise<Name
             translations: '',
         };
     }
+}
+
+async function initDict(language: string): Promise<NamespaceInfo[]> {
+    const namespaces = await getAdminNamespaces();
+    return await Promise.all(namespaces.map(ns => buildNamespace(language, ns)));
 }
 
 const cache: { [key: string]: NamespaceInfo[] } = {};
