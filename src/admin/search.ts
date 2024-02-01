@@ -72,7 +72,7 @@ function nsToTitle(namespace: string): string {
 const fallbackCache: FallbackCache = {};
 
 async function initFallback(namespace: string): Promise<NamespaceInfo> {
-    const template = await fs.readFile(path.resolve(nconf.get('views_dir'), `${namespace}.tpl`), 'utf8');
+    const template = await fs.readFile(path.resolve(nconf.get('views_dir') as string, `${namespace}.tpl`), 'utf8');
     const title = nsToTitle(namespace);
     let translations = sanitize(template);
     translations = Translator.removePatterns(translations);
@@ -100,6 +100,7 @@ async function buildNamespace(language: string, namespace: string): Promise<Name
     if (!namespace) {
         throw new Error('Namespace is undefined or null');
     }
+
     const translator = Translator.create(language);
     try {
         const translations: { [key: string]: string } = await translator.getTranslation(namespace);
