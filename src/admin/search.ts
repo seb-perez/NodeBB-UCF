@@ -31,8 +31,21 @@ function filterDirectories(directories: string[]): string[] {
 }
 
 async function getAdminNamespaces(): Promise<string[]> {
-    const directories: string[] = await file.walk(path.resolve(nconf.get('views_dir'), 'admin')) as string[];
-    return filterDirectories(directories);
+    try {
+        const viewsDir: string = nconf.get('views_dir') as string;
+        if (typeof viewsDir !== 'string') {
+            throw new Error('Views directory path is not a string');
+        }
+        const directories: string[] = await file.walk(path.resolve(viewsDir, 'admin')) as string[];
+        return filterDirectories(directories);
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error('Error fetching admin namespaces:', error.message);
+        } else {
+            console.error('An unknown error occurred while fetching admin namespaces.');
+        }
+        return [];
+    }
 }
 
 function sanitize(html: string): string {
